@@ -169,7 +169,12 @@ const TestResult = () => {
     setCorrectAnswers(correct);
 
     fullData.forEach((part) => {
+      if(!part) return;
+
+      // Tổng số câu hỏi
       questions += part.questions.length;
+
+      // Đếm số câu bị bỏ qua
       part.questions.forEach((item) => {
         if (item.userAnswer == null) {
           skipCount += 1;
@@ -317,6 +322,8 @@ const TestResult = () => {
       <div className="answer-list">
         <h3>Đáp án</h3>
         {fullData.map((part, index) => {
+          // console.log(fullData)
+          if (!part) return null;
           return (
             <div
               key={index}
@@ -337,8 +344,13 @@ const TestResult = () => {
                         ) : (
                           <div className="answer-choice">
                             <span>
-                              {convertSelectedToLetter(
+                              {/* {convertSelectedToLetter(
                                 item.userAnswer.SelectedAnswerID
+                              )} */}
+                              {convertSelectedToLetter(
+                                item.answers.findIndex(
+                                  (answer) => answer.Id == item.userAnswer.SelectedAnswerID
+                                ) + 1 // +1 để chuyển sang dạng "A, B, C,..."
                               )}
                             </span>
                             <div
@@ -378,7 +390,7 @@ const TestResult = () => {
                             </button>
                             <h3>{selectedQuestion.question.Text}</h3>
                             <ul>
-                              {selectedQuestion.answers.map((answer) => {
+                              {selectedQuestion.answers.map((answer, index) => {
                                 return (
                                   <li
                                     key={answer.Id}
@@ -394,7 +406,7 @@ const TestResult = () => {
                                       }`}
                                   >
                                     <span style={{ fontWeight: "bold" }}>
-                                      {convertSelectedToLetter(answer.Id)}
+                                      {convertSelectedToLetter(index + 1)}
                                     </span>
                                     . {answer.Text}
                                   </li>

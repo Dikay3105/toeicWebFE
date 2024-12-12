@@ -1,93 +1,84 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   loadComment,
   createComment,
   updateComment,
   deleteComment,
 } from "../../../services/feedbackService";
-import { useParams } from "react-router-dom"; // Import useParams
 import "./Comment.scss";
+import { useSelector } from "react-redux";
 
-const Comment = ({ comment, onDelete, onEdit }) => (
-  <li>
-    <div className="comment-main-level">
-      <div className="comment-avatar">
-        <img src={comment.avatar} alt="avatar" />
-      </div>
-      <div className="comment-box">
-        <div className="comment-head">
-          <h6
-            className={`comment-name ${
-              comment.author === "Agustin Ortiz" ? "by-author" : ""
-            }`}
-          >
-            {comment.author}
-          </h6>
-          <span>{comment.time}</span>
-          <button onClick={() => onEdit(comment)}>Edit</button>
-          <button onClick={() => onDelete(comment.id)}>Delete</button>
-        </div>
-        <div className="comment-content">{comment.content}</div>
-      </div>
-    </div>
-    {comment.replies && comment.replies.length > 0 && (
-      <ul className="comments-list reply-list">
-        {comment.replies.map((reply) => (
-          <Comment
-            key={reply.id}
-            comment={reply}
-            onDelete={onDelete}
-            onEdit={onEdit}
-          />
-        ))}
-      </ul>
-    )}
-  </li>
-);
-
-const CommentsContainer = (props) => {
+const CommentsContainer = ({ userId }) => {
+  // const userId = useSelector((state) => state.userReducer.account.userid);
+  const { testId } = useParams(); // Lấy testId từ URL
   const [comments, setComments] = useState([]);
-  const [editingComment, setEditingComment] = useState(null);
   const [newComment, setNewComment] = useState("");
-  const { testId } = useParams(); // Lấy testId từ URL params
+  const [editingComment, setEditingComment] = useState(null);
 
+  // Fetch comments khi component được mount hoặc testId thay đổi
   useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const data = await loadComment(props.testId); // Load comments by testID
-        setComments(data);
-      } catch (error) {
-        console.error("Error loading comments:", error);
-      }
-    };
     fetchComments();
-  }, []);
-
+  }, [testId]);
+  const fetchComments = async () => {
+    try {
+      const data = await loadComment(testId); // Lấy danh sách bình luận theo testId
+      setComments(data || []);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    }
+  };
+  // Xử lý thêm bình luận
   const handleAddComment = async () => {
+    if (!newComment.trim()) return; // Không cho phép bình luận rỗng
+
     try {
       const commentData = {
-        content: newComment,
-        avatar: "https://example.com/avatar.jpg",
+        UserID: userId,
+        TestID: testId,
+        CommentText: newComment,
       };
-      const addedComment = await createComment(commentData, props.userId);
-      setComments((prev) => [...prev, addedComment]);
+
+      // Gửi yêu cầu và thêm bình luận vào danh sách
+      const addedComment = await createComment(commentData);
+
+      if (addedComment) {
+        setComments((prev) => [...prev, addedComment]);
+        fetchComments();
+      }
+
       setNewComment("");
     } catch (error) {
       console.error("Error adding comment:", error);
     }
   };
 
-  const handleEditComment = async (comment) => {
+  // Xử lý chỉnh sửa bình luận
+  const handleEditComment = (comment) => {
     setEditingComment(comment);
-    setNewComment(comment.content);
+    setNewComment(comment.CommentText);
   };
 
+  // Xử lý cập nhật bình luận
   const handleUpdateComment = async () => {
+    if (!newComment.trim()) return; // Không cập nhật nếu nội dung rỗng
     try {
-      const updatedComment = { ...editingComment, content: newComment };
-      await updateComment(editingComment.id, updatedComment);
+      // Kiểm tra xem `editingComment` có tồn tại và có `CommentID` không
+      if (!editingComment || !editingComment.CommentID) {
+        console.error("CommentID is missing");
+        return;
+      }
+
+      const updatedComment = { ...editingComment, CommentText: newComment };
+      const response = await updateComment(
+        editingComment.CommentID,
+        updatedComment
+      );
+
       setComments((prev) =>
-        prev.map((c) => (c.id === editingComment.id ? updatedComment : c))
+        prev.map((comment) =>
+          comment.CommentID === editingComment.CommentID ? response : comment
+        )
       );
       setEditingComment(null);
       setNewComment("");
@@ -96,6 +87,7 @@ const CommentsContainer = (props) => {
     }
   };
 
+  // Xử lý xóa bình luận
   const handleDeleteComment = async (id) => {
     try {
       await deleteComment(id);
@@ -108,13 +100,14 @@ const CommentsContainer = (props) => {
   return (
     <div className="comments-container">
       <h1>Comments</h1>
-      <ul id="comments-list" className="comments-list">
+      <ul className="comments-list">
         {comments.map((comment) => (
-          <Comment
-            key={comment.id}
+          <CommentItem
+            key={comment.CommentID}
             comment={comment}
-            onDelete={handleDeleteComment}
             onEdit={handleEditComment}
+            onDelete={handleDeleteComment}
+            userId={userId} // Truyền userId vào cho mỗi comment
           />
         ))}
       </ul>
@@ -123,15 +116,65 @@ const CommentsContainer = (props) => {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Write a comment..."
-        ></textarea>
-        {editingComment ? (
-          <button onClick={handleUpdateComment}>Update Comment</button>
-        ) : (
-          <button onClick={handleAddComment}>Add Comment</button>
-        )}
+        />
+        <button
+          onClick={editingComment ? handleUpdateComment : handleAddComment}
+        >
+          {editingComment ? "Update Comment" : "Add Comment"}
+        </button>
       </div>
     </div>
   );
 };
+
+const CommentItem = ({ comment, onEdit, onDelete, userId }) => (
+  <li>
+    <div className="comment-main-level">
+      <div className="comment-avatar">
+        <img
+          src="https://cdn-icons-png.flaticon.com/128/3237/3237472.png"
+          alt="avatar"
+        />
+      </div>
+      <div className="comment-box">
+        <div className="comment-head">
+          <h6
+            className={`comment-name ${
+              comment.UserID === userId ? "by-author" : ""
+            }`}
+          >
+            {comment.UserID} {/* Hiển thị UserID hoặc tên người dùng */}
+          </h6>
+          <span>{new Date(comment.CommentDate).toLocaleString()}</span>
+
+          {/* Chỉ hiển thị nút Edit và Delete nếu UserID của bình luận bằng userId */}
+          {comment.UserID === userId && (
+            <>
+              <button onClick={() => onEdit(comment)}>Edit</button>
+              <button onClick={() => onDelete(comment.CommentID)}>
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+        <div className="comment-content">{comment.CommentText}</div>
+      </div>
+    </div>
+    {/* Hiển thị phản hồi nếu có */}
+    {comment.replies && comment.replies.length > 0 && (
+      <ul className="reply-list">
+        {comment.replies.map((reply) => (
+          <CommentItem
+            key={reply.CommentID}
+            comment={reply}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            userId={userId} // Truyền userId vào cho các phản hồi
+          />
+        ))}
+      </ul>
+    )}
+  </li>
+);
 
 export default CommentsContainer;

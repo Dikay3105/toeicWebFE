@@ -45,8 +45,15 @@ const TestDetail = () => {
         navigate(`/test/${testId}/full`); // Đường dẫn cho bài kiểm tra toàn bộ
       } else if (type === "part") {
         console.log("Parts selected for practice:", selectedParts);
-        // Chuyển hướng đến trang kiểm tra từng phần
-        navigate(`/test/${testId}/part`, { state: { parts: selectedParts } }); // Đường dẫn cho bài kiểm tra từng phần
+
+        // Kiểm tra nếu không có phần nào được chọn
+        if (!Object.values(selectedParts).some((part) => part === true)) {
+          toast.error("Vui lòng chọn ít nhất một phần để thực hành!");
+          return; // Dừng lại, không chuyển hướng
+        }
+
+        // Chuyển hướng đến trang kiểm tra từng phần nếu có phần được chọn
+        navigate(`/test/${testId}/part`, { state: { parts: selectedParts } });
       }
 
       console.log("Test ID:", testId);

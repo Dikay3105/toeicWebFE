@@ -15,10 +15,23 @@ const getAllHistories = async () => {
   }
 };
 
+
+
 // Lấy lịch sử theo ID
 const getHistoryById = async (id) => {
   try {
     const response = await axios.get(`api/History/${id}`);
+    return response;
+  } catch (error) {
+    console.error(`Error fetching history with id=${id}:`, error);
+    throw error;
+  }
+};
+
+// Lấy lịch sử theo ID
+const getHistoryByUserId = async (id) => {
+  try {
+    const response = await axios.get(`api/History/user/${id}`);
     return response;
   } catch (error) {
     console.error(`Error fetching history with id=${id}:`, error);
@@ -111,6 +124,7 @@ export {
   getAllPartsByHistoryId,
   getCombinedHistories,
   getPartOfHis,
+  getHistoryByUserId
 };
 
 /* import createAxiosInstance from "../util/axiosCustomize";
